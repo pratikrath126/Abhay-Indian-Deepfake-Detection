@@ -1,60 +1,21 @@
 import ConfidenceBar from './ConfidenceBar';
 import MetadataPanel from './MetadataPanel';
 
-function getSummary(result) {
-  const mlFake = result.label === 'Fake';
-  const metaStatus = result?.metadata?.status;
-
-  if (mlFake && metaStatus === 'Suspicious') return 'HIGH CONFIDENCE AI GENERATED';
-  if (!mlFake && metaStatus === 'Likely Real') return 'HIGH CONFIDENCE REAL PERSON';
-  return 'ANALYSIS COMPLETE — REVIEW RESULTS ABOVE';
-}
-
 export default function ResultCard({ result, preview, onReset }) {
   const isFake = result.label === 'Fake';
-  const verdictClass = isFake ? 'bg-red-600' : 'bg-green-600';
-  const verdictText = isFake ? '⚠ AI GENERATED FACE DETECTED' : '✓ REAL PERSON DETECTED';
-  const accentClass = isFake ? 'text-red-400' : 'text-green-400';
-  const borderClass = isFake ? 'border-red-500' : 'border-green-500';
+  const verdict = isFake
+    ? { className: 'verdict-fake', hindi: 'AI से बना चेहरा होने की संभावना', english: 'Possibly AI-generated', symbol: '!' }
+    : { className: 'verdict-real', hindi: 'असली तस्वीर होने की संभावना', english: 'Likely a real photograph', symbol: '✓' };
 
   return (
-    <div className="fade-in space-y-5">
-      <div className={`${verdictClass} text-white rounded-xl p-6 text-2xl font-bold tracking-wide`}>
-        {verdictText}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="rounded-xl border border-gray-700 bg-[#111] p-5">
-          <img
-            src={preview}
-            alt="Analyzed"
-            className={`w-full rounded-lg border-2 ${borderClass}`}
-          />
-          <div className="mt-4 text-sm text-gray-300">CONFIDENCE SCORE</div>
-          <div className={`text-5xl font-bold mt-1 ${accentClass}`}>{result.confidence}%</div>
-          <div className="mt-3">
-            <ConfidenceBar confidence={result.confidence} isFake={isFake} />
-          </div>
-          <div className="mt-2 text-sm text-gray-400">
-            Real: {result?.scores?.real ?? 0}% | Fake: {result?.scores?.fake ?? 0}%
-          </div>
-        </div>
-
+    <section className="results-section" aria-live="polite">
+      <div className={`verdict-banner ${verdict.className}`}><span className="verdict-symbol">{verdict.symbol}</span><div><span className="section-kicker">जांच का नतीजा / ANALYSIS RESULT</span><h2>{verdict.hindi}</h2><p>{verdict.english}</p></div><span className="verdict-index">ABHAY · 01</span></div>
+      <div className="result-grid">
+        <article className="result-image-card"><div className="result-card-heading"><span>तस्वीर / IMAGE</span><span>01 — 01</span></div><img src={preview} alt="Analyzed image" /><div className="confidence-heading"><span>MODEL CONFIDENCE <small>मॉडल का अनुमान</small></span><strong>{result.confidence}%</strong></div><ConfidenceBar confidence={result.confidence} isFake={isFake} /><div className="score-legend"><span><i className="legend-dot real-dot" />Real <b>{result?.scores?.real ?? 0}%</b></span><span><i className="legend-dot fake-dot" />AI-generated <b>{result?.scores?.fake ?? 0}%</b></span></div></article>
         <MetadataPanel metadata={result.metadata} />
       </div>
-
-      <div className="rounded-xl border border-gray-700 bg-[#111] p-5">
-        <div className="text-sm text-gray-300">OVERALL VERDICT SUMMARY</div>
-        <div className="text-xl text-white font-bold mt-2">{getSummary(result)}</div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onReset}
-        className="w-full rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors py-3 font-bold text-white"
-      >
-        ANALYZE ANOTHER IMAGE
-      </button>
-    </div>
+      <div className="result-disclaimer"><span>✳</span><p><b>ध्यान दें / A note on this result</b><br />AI detection is an estimate, not proof. Metadata can be missing from genuine images or altered in synthetic ones. Consider the image's source and context.</p></div>
+      <button type="button" onClick={onReset} className="reset-button">दूसरी तस्वीर जांचें <span>ANALYZE ANOTHER IMAGE ↗</span></button>
+    </section>
   );
 }

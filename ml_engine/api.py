@@ -1,9 +1,10 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
 import os
 import sys
+import secrets
 
 from predict import load_model, predict_image
 from metadata import check_metadata
@@ -18,13 +19,13 @@ async def lifespan(app: FastAPI):
         print("Run: python train.py first")
         sys.exit(1)
 
-    print("Loading VERITAS model...")
+    print("Loading ABHAY model...")
     load_model()
     print("ML Engine ready on port 8000")
     yield
 
 app = FastAPI(
-    title="Veritas ML Engine",
+    title="Abhay ML Engine",
     description="Deepfake detection API",
     version="1.0.0",
     lifespan=lifespan
@@ -46,15 +47,19 @@ async def health_check():
     return {
         "status": "ok",
         "model": "loaded",
-        "service": "veritas-ml-engine"
+        "service": "abhay-ml-engine"
     }
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+def predict(file: UploadFile = File(...), x_ml_api_key: str | None = Header(default=None)):
     """
     Accept image file, run deepfake detection + metadata analysis.
     Returns combined result.
     """
+    expected_key = os.getenv("ML_API_KEY")
+    if expected_key and not secrets.compare_digest(x_ml_api_key or "", expected_key):
+        raise HTTPException(status_code=401, detail="Unauthorized ML API request")
+
     allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
     if file.content_type not in allowed_types:
         raise HTTPException(

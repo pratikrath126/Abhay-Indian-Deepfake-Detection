@@ -132,11 +132,11 @@ CUSTOM_CSS = """
 """
 
 DESCRIPTION = """
-# VERITAS - Deepfake Face Detector
+# ABHAY - Deepfake Face Detector
 Upload a face image to classify it as **Real** or **AI Generated** with model confidence and EXIF metadata analysis.
 """
 
-with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue"), css=CUSTOM_CSS, title="VERITAS") as demo:
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue"), css=CUSTOM_CSS, title="ABHAY") as demo:
     gr.Markdown(DESCRIPTION)
 
     image_input = gr.Image(type="filepath", label="Upload Face Image")

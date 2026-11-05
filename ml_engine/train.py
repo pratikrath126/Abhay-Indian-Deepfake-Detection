@@ -172,7 +172,7 @@ def build_model(device):
 # ============================================================
 def train():
     print("\n" + "=" * 60)
-    print("VERITAS DEEPFAKE DETECTOR — TRAINING")
+    print("ABHAY DEEPFAKE DETECTOR — TRAINING")
     print("=" * 60)
 
     device = get_device()

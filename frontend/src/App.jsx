@@ -3,6 +3,9 @@ import { analyzeImage, checkHealth } from './api';
 import UploadZone from './components/UploadZone';
 import ResultCard from './components/ResultCard';
 
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export default function App() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -14,39 +17,37 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-
     const runHealthCheck = async () => {
       const status = await checkHealth();
       if (active) setBackendStatus(status);
     };
-
     runHealthCheck();
     const timer = setInterval(runHealthCheck, 10000);
-
     return () => {
       active = false;
       clearInterval(timer);
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
   }, [preview]);
 
-  const statusView = useMemo(() => {
-    if (backendStatus.node_server !== 'online') {
-      return { dot: 'bg-yellow-400', text: 'Backend Offline' };
-    }
-    if (backendStatus.ml_engine !== 'online') {
-      return { dot: 'bg-red-500', text: 'ML Engine Offline' };
-    }
-    return { dot: 'bg-green-500', text: 'Systems Online' };
-  }, [backendStatus]);
+  const serviceOnline = backendStatus.node_server === 'online' && backendStatus.ml_engine === 'online';
+  const statusView = useMemo(() => serviceOnline
+    ? { text: 'System ready', hindi: 'सिस्टम तैयार', className: 'online' }
+    : { text: 'Checking system', hindi: 'जांच जारी', className: 'checking' }, [serviceOnline]);
 
   const onFilePicked = (picked) => {
     if (!picked) return;
+    if (!ALLOWED_TYPES.includes(picked.type)) {
+      setError('Please choose a JPG, PNG, or WebP image. कृपया JPG, PNG या WebP image चुनें।');
+      return;
+    }
+    if (picked.size > MAX_FILE_SIZE) {
+      setError('This image is over 20 MB. कृपया 20 MB से छोटी image चुनें।');
+      return;
+    }
     setError('');
     setResult(null);
     if (preview) URL.revokeObjectURL(preview);
@@ -54,36 +55,21 @@ export default function App() {
     setPreview(URL.createObjectURL(picked));
   };
 
-  const handleFileChange = (e) => {
-    onFilePicked(e.target.files?.[0]);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
+  const handleFileChange = (event) => onFilePicked(event.target.files?.[0]);
+  const handleDragOver = (event) => { event.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (event) => { event.preventDefault(); setIsDragging(false); };
+  const handleDrop = (event) => {
+    event.preventDefault();
     setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const dropped = e.dataTransfer.files?.[0];
-    if (dropped && dropped.type.startsWith('image/')) onFilePicked(dropped);
+    onFilePicked(event.dataTransfer.files?.[0]);
   };
 
   const handleAnalyze = async () => {
     if (!file || loading) return;
-
     setLoading(true);
     setError('');
-
     try {
-      const apiResult = await analyzeImage(file);
-      setResult(apiResult);
+      setResult(await analyzeImage(file));
     } catch (err) {
       const message = err?.response?.data?.message || err?.response?.data?.error || err.message || 'Analysis failed.';
       setError(message);
@@ -103,23 +89,36 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6">
-      <header className="max-w-5xl mx-auto flex items-center justify-between mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-widest">VERITAS</h1>
-        <div className="flex items-center gap-2 text-sm">
-          <span className={`w-3 h-3 rounded-full ${statusView.dot}`} />
-          <span className="text-gray-200">{statusView.text}</span>
+    <div className="abhay-app min-h-screen">
+      <div className="top-ribbon"><span>सतर्क रहें · सोच-समझकर साझा करें</span><span>Look closer. Share with care.</span></div>
+      <header className="site-header">
+        <a className="brand" href="#top" aria-label="Abhay home">
+          <span className="brand-mark" aria-hidden="true">अ</span>
+          <span className="brand-copy"><strong>ABHAY</strong><small>अभय · DIGITAL TRUST LAB</small></span>
+        </a>
+        <nav className="header-nav" aria-label="Main navigation">
+          <a href="#how-it-works">कैसे काम करता है <span>How it works</span></a>
+          <a href="#about-project">परियोजना <span>About</span></a>
+        </nav>
+        <div className={`service-pill ${statusView.className}`} title={`${statusView.hindi} · ${statusView.text}`}>
+          <span className="status-dot" />
+          <span><b>{statusView.text}</b><small>{statusView.hindi}</small></span>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto">
-        {!result && (
-          <>
-            <section className="text-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold">DEEPFAKE FACE DETECTION</h2>
-              <p className="text-gray-400 mt-2">Upload any face photo to analyze authenticity</p>
-            </section>
+      <main id="top">
+        <section className="hero-shell">
+          <div className="hero-copy">
+            <div className="eyebrow"><span className="eyebrow-line" /> AI चेहरे की पहचान <span>/</span> FACE AUTHENTICITY CHECK</div>
+            <h1>हर चेहरे के पीछे,<br /><em>एक सच्चाई।</em></h1>
+            <p className="hero-english">A thoughtful first check for faces that may be made by AI.</p>
+            <p className="hero-description">एक तस्वीर अपलोड करें। Abhay चेहरे के visual signals और image metadata की जांच करके आपको एक आसान-सा संकेत देता है।</p>
+            <div className="hero-note"><span aria-hidden="true">✳</span><p><strong>सिर्फ एक संकेत, अंतिम फैसला नहीं।</strong><br />Detection results को context के साथ समझें और ज़रूरत पड़ने पर दूसरे sources से भी verify करें।</p></div>
+            <div className="hero-byline"><span className="mini-seal">अ</span><span>एक student project from <b>KIIT, Bhubaneswar</b></span><span className="byline-divider" /><span>IMAGE FORENSICS · 01</span></div>
+          </div>
 
+          <div className="upload-card" aria-label="Upload an image for analysis">
+            <div className="card-topline"><span><b>01</b> &nbsp; तस्वीर चुनें / SELECT IMAGE</span><span className="card-corner">✳</span></div>
             <UploadZone
               file={file}
               preview={preview}
@@ -131,41 +130,38 @@ export default function App() {
               onBrowse={() => document.getElementById('fileInput')?.click()}
               onFileChange={handleFileChange}
             />
+            <div className="upload-meta"><span>JPG · PNG · WEBP</span><span>अधिकतम 20 MB / MAX 20 MB</span></div>
+            <button type="button" disabled={!file || loading || !serviceOnline} onClick={handleAnalyze} className="analyze-button">
+              <span>{loading ? 'जांच हो रही है · ANALYZING' : 'तस्वीर की जांच करें · ANALYZE IMAGE'}</span>
+              <span className="button-arrow" aria-hidden="true">↗</span>
+            </button>
+            {!serviceOnline && <p className="service-hint">जांच सेवा से जुड़ रहे हैं… / Connecting to detection service…</p>}
+            <p className="privacy-note"><span aria-hidden="true">⌑</span> आपकी image केवल analysis के लिए भेजी जाती है। / Image is used for analysis only.</p>
+          </div>
+        </section>
 
-            {file && (
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleAnalyze}
-                className="w-full mt-4 rounded-lg bg-green-600 hover:bg-green-500 disabled:bg-green-900 disabled:cursor-not-allowed transition-colors py-4 text-lg font-bold"
-              >
-                {loading ? 'SCANNING...' : 'ANALYZE'}
-              </button>
-            )}
-          </>
+        {error && (
+          <div className="error-panel" role="alert">
+            <div><strong>जांच पूरी नहीं हो सकी / Could not complete analysis</strong><p>{error}</p></div>
+            <button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button>
+          </div>
         )}
 
         {result && <ResultCard result={result} preview={preview} onReset={handleReset} />}
 
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-500 bg-red-950/40 p-4">
-            <div className="font-bold text-red-300">Error</div>
-            <div className="text-red-200 mt-1">{error}</div>
-            {error.toLowerCase().includes('ml service') && (
-              <div className="text-yellow-300 text-sm mt-2">
-                Python ML Engine is offline. Start it with: <code>cd ml_engine && python api.py</code>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setError('')}
-              className="mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 rounded text-white"
-            >
-              Try Again
-            </button>
+        <section id="how-it-works" className="signals-section">
+          <div className="section-heading"><div><span className="section-kicker">WHAT ABHAY LOOKS AT</span><h2>दो नज़रिए। <em>एक बेहतर संकेत।</em></h2></div><p>हर जांच में image के अलग-अलग clues देखे जाते हैं।<br />No single clue tells the whole story.</p></div>
+          <div className="signal-grid">
+            <article className="signal-card signal-saffron"><span className="signal-number">01</span><span className="signal-icon" aria-hidden="true">◉</span><h3>Visual signals <small>दृश्य संकेत</small></h3><p>EfficientNet-B0 model चेहरे के image patterns को classify करता है और real या AI-generated होने का estimate देता है।</p><span className="signal-foot">IMAGE PATTERN REVIEW <b>↗</b></span></article>
+            <article className="signal-card signal-green"><span className="signal-number">02</span><span className="signal-icon" aria-hidden="true">⌑</span><h3>Image details <small>तस्वीर की जानकारी</small></h3><p>EXIF metadata में camera, software और दूसरे file details के clues देखे जाते हैं।</p><span className="signal-foot">METADATA REVIEW <b>↗</b></span></article>
+            <article className="signal-card signal-cream"><span className="signal-number">03</span><span className="signal-icon" aria-hidden="true">✳</span><h3>Read with care <small>समझदारी से देखें</small></h3><p>Confidence score एक model estimate है। Metadata हटाया या बदला जा सकता है, इसलिए नतीजे को अकेला सबूत न मानें।</p><span className="signal-foot">CONTEXT MATTERS <b>↗</b></span></article>
           </div>
-        )}
+        </section>
+
+        <section id="about-project" className="about-strip"><div className="about-stamp">अ<br /><small>ABHAY</small></div><div><span className="section-kicker">A STUDENT RESEARCH PROJECT · KIIT, BHUBANESWAR</span><h2>Technology for a more thoughtful internet.</h2><p>Abhay brings machine learning and image metadata analysis together to make face-image checks easier to understand. Built as a three-part system with a React interface, Node.js API gateway, and Python inference engine.</p></div><a href="#top" className="back-top">शुरुआत पर जाएं <span>BACK TO TOP ↑</span></a></section>
       </main>
+
+      <footer className="site-footer"><span>ABHAY <b>·</b> अभय</span><span>DEEPFAKE FACE DETECTION SYSTEM</span><span>Made for careful looking <b>✳</b></span></footer>
     </div>
   );
 }

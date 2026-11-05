@@ -48,7 +48,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Veritas Node.js server running on port ${PORT}`);
+  console.log(`Abhay Node.js server running on port ${PORT}`);
   console.log(`ML Engine URL: ${ML_ENGINE_URL}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
 });

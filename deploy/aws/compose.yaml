@@ -1,0 +1,13 @@
+services:
+  ml-api:
+    build:
+      context: ../..
+      dockerfile: deploy/aws/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    ports:
+      - "127.0.0.1:8000:8000"
+    cpus: 2.0
+    mem_limit: 3g
+    init: true

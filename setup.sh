@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "======================================"
-echo "VERITAS — Setup Script"
+echo "ABHAY — Setup Script"
 echo "======================================"
 
 echo ""

@@ -1,7 +1,5 @@
 # Dataset (too large for git)
 dataset/
-# Trained model
-ml_engine/model.pth
 # Python
 __pycache__/
 *.pyc

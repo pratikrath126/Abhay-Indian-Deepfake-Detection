@@ -5,6 +5,7 @@ const FormData = require('form-data');
 
 const router = express.Router();
 const ML_ENGINE_URL = process.env.ML_ENGINE_URL || 'http://localhost:8000';
+const ML_API_KEY = process.env.ML_API_KEY || '';
 
 const storage = multer.memoryStorage();
 
@@ -38,7 +39,7 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     });
 
     const mlResponse = await axios.post(`${ML_ENGINE_URL}/predict`, formData, {
-      headers: { ...formData.getHeaders() },
+      headers: { ...formData.getHeaders(), ...(ML_API_KEY ? { 'X-ML-API-Key': ML_API_KEY } : {}) },
       timeout: 30000,
       maxContentLength: Infinity,
       maxBodyLength: Infinity,

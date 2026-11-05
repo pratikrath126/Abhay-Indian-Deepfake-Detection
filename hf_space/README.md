@@ -1,5 +1,5 @@
 ---
-title: VERITAS Deepfake Detector
+title: ABHAY Deepfake Detector
 emoji: 🔍
 colorFrom: gray
 colorTo: blue
@@ -10,9 +10,9 @@ app_file: app.py
 pinned: false
 ---
 
-# VERITAS on Hugging Face Spaces
+# ABHAY on Hugging Face Spaces
 
-This Space runs VERITAS deepfake face detection using EfficientNet-B0 + EXIF metadata heuristics.
+This Space runs ABHAY deepfake face detection using EfficientNet-B0 + EXIF metadata heuristics.
 
 ## Included files
 - `app.py`: Gradio UI entrypoint

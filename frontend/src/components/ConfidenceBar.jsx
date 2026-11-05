@@ -1,12 +1,4 @@
 export default function ConfidenceBar({ confidence, isFake }) {
-  const fillClass = isFake ? 'bg-red-500' : 'bg-green-500';
-
-  return (
-    <div className="w-full bg-gray-800 rounded-full h-4 overflow-hidden border border-gray-700">
-      <div
-        className={`${fillClass} h-4 transition-all duration-700 ease-out`}
-        style={{ width: `${Math.max(0, Math.min(confidence, 100))}%` }}
-      />
-    </div>
-  );
+  const value = Math.max(0, Math.min(Number(confidence) || 0, 100));
+  return <div className={`confidence-track${isFake ? ' confidence-fake' : ' confidence-real'}`} role="meter" aria-label="Model confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow={value}><span style={{ width: `${value}%` }} /></div>;
 }

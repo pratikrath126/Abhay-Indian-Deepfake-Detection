@@ -1,18 +1,6 @@
 services:
   - type: web
-    name: veritas-ml-engine
-    runtime: python
-    plan: free
-    rootDir: ml_engine
-    buildCommand: pip install -r requirements.txt
-    startCommand: python api.py
-    healthCheckPath: /health
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.10
-
-  - type: web
-    name: veritas-server
+    name: abhay-server
     runtime: node
     plan: free
     rootDir: server
@@ -22,11 +10,13 @@ services:
     envVars:
       - key: ML_ENGINE_URL
         sync: false
+      - key: ML_API_KEY
+        sync: false
       - key: CORS_ORIGINS
         sync: false
 
   - type: static
-    name: veritas-frontend
+    name: abhay-frontend
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist

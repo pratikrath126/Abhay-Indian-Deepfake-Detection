@@ -1,6 +1,6 @@
-# VERITAS — Deepfake Face Detector
+# ABHAY — Deepfake Face Detector
 
-VERITAS is a production-ready full-stack web app that classifies uploaded face images as **REAL** or **AI GENERATED**, returns confidence scores, and performs EXIF metadata analysis.
+ABHAY is a production-ready full-stack web app that classifies uploaded face images as **REAL** or **AI GENERATED**, returns confidence scores, and performs EXIF metadata analysis.
 
 ## Stack
 - Frontend: React + Vite + TailwindCSS (`localhost:3000`)
@@ -19,13 +19,13 @@ https://www.kaggle.com/datasets/xhlulu/140k-real-and-fake-faces
 
 - This gives you 70k real + 70k fake faces at 256x256
 - After download, copy:
-  * 7000 images from /real folder → /VeritasDetector/dataset/real/
-  * 8000 images from /fake folder → /VeritasDetector/dataset/fake/
+  * 7000 images from /real folder → /AbhayDetector/dataset/real/
+  * 8000 images from /fake folder → /AbhayDetector/dataset/fake/
 
 STEP 2 — INDIAN REAL FACES (Critical for Indian accuracy)
 Download Dataset A from Kaggle:
 https://www.kaggle.com/datasets/havingfun/indian-celebrities-faces
-- Copy 2000 images → /VeritasDetector/dataset/real/
+- Copy 2000 images → /AbhayDetector/dataset/real/
 
 Download Dataset B from Kaggle:
 https://www.kaggle.com/datasets/jangedoo/utkface-new
@@ -35,7 +35,7 @@ https://www.kaggle.com/datasets/jangedoo/utkface-new
 
 Download Dataset C from Kaggle:
 https://www.kaggle.com/datasets/sushilyadav1998/bollywood-celeb-localized-face-dataset
-- Copy 1000 images → /VeritasDetector/dataset/real/
+- Copy 1000 images → /AbhayDetector/dataset/real/
 
 STEP 3 — INDIAN FAKE FACES (Critical for Indian fake detection)
 Go to Google Colab: https://colab.research.google.com
@@ -105,7 +105,7 @@ shutil.make_archive("indian_fakes", "zip", "indian_fakes")
 files.download("indian_fakes.zip")
 --- COLAB CODE END ---
 
-After download, unzip and copy all images → /VeritasDetector/dataset/fake/
+After download, unzip and copy all images → /AbhayDetector/dataset/fake/
 
 FINAL DATASET COUNT CHECK:
 dataset/real/ should have ~12,000 images total
@@ -121,7 +121,7 @@ Run: python ml_engine/dataset_prep.py --check to verify counts
    - `mkdir -p ~/.kaggle`
    - `mv /path/to/kaggle.json ~/.kaggle/kaggle.json`
    - `chmod 600 ~/.kaggle/kaggle.json`
-4. From project root (`VeritasDetector`), create temp download folders:
+4. From project root (`AbhayDetector`), create temp download folders:
    - `mkdir -p downloads/kaggle`
 5. Download 140k dataset:
    - `kaggle datasets download -d xhlulu/140k-real-and-fake-faces -p downloads/kaggle`
@@ -214,57 +214,38 @@ Accuracy depends heavily on dataset balance, image quality, and training quality
 - **Slow training**
   - Confirm MPS is available on Mac (`torch.backends.mps.is_available()`).
 
-## Deploy on Render (Free Tier)
+## Deployment: Render + AWS Lightsail
 
-This repo includes a Blueprint file: `render.yaml`.
+The production setup is split across two providers:
 
-### Important
+- **Render:** React/Vite static frontend and Node/Express API gateway.
+- **AWS Lightsail (Mumbai):** Python/FastAPI inference API with the trained EfficientNet-B0 model.
 
-- Render deploys from a Git provider repo (GitHub/GitLab/Bitbucket).
-- The ML service needs `ml_engine/model.pth` at runtime.
-- `ml_engine/model.pth` is ignored by `.gitignore`, so for deployment either:
-  - upload the model to a public URL and add startup download logic, or
-  - force-add model file to git for this deployment:
-    - `git add -f ml_engine/model.pth`
+The model weights are included in this repository so the AWS container can build without downloading a separate artifact. Dataset files remain excluded from Git.
 
-### 1. Push project to GitHub
+### AWS ML service
 
-```bash
-git init
-git add .
-git add -f ml_engine/model.pth
-git commit -m "VERITAS ready for Render deployment"
-git branch -M main
-git remote add origin https://github.com/<your-user>/<your-repo>.git
-git push -u origin main
-```
+1. Create an Ubuntu 24.04 Lightsail instance in **Asia Pacific (Mumbai), `ap-south-1`**. The recommended Linux bundle has 2 vCPUs and 4 GB RAM. AWS lists it at $24/month with public IPv4; Mumbai transfer allowance is half the listed 4 TB, or 2 TB. It is a good fit for a five-user classroom demo. [Bundle details](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-bundles.html) · [Mumbai region availability](https://docs.aws.amazon.com/lightsail/latest/userguide/understanding-regions-and-availability-zones-in-amazon-lightsail.html)
+2. In the instance networking firewall, allow inbound TCP **80** and **443**. The deployment script obtains a Let's Encrypt certificate for the instance's `nip.io` hostname and redirects HTTP to HTTPS.
+3. Paste the contents of `deploy/aws/lightsail-user-data.sh` into the instance's launch script. It installs Docker, builds the CPU-only ML container, creates an `ML_API_KEY` in `/opt/abhay/.env`, and configures Nginx and TLS.
+4. Wait for the instance initialization to finish. The public ML URL is recorded at `/opt/abhay/DEPLOYED_URL.txt`; `/health` should report `status: ok`.
+5. Copy the generated `ML_API_KEY` from `/opt/abhay/.env` into the Render server environment. Keep it private and do not commit it.
 
-### 2. Open Render Blueprint
+Lightsail instances continue to accrue charges while stopped. Delete the instance after the demo if you want to stop its charges; deleting it removes the instance data. [AWS billing details](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-frequently-asked-questions-faq-billing-and-account-management.html) · [Deleting an instance](https://docs.aws.amazon.com/lightsail/latest/userguide/delete-an-amazon-lightsail-instance.html)
 
-Open:
+### Render services
 
-`https://dashboard.render.com/blueprint/new?repo=https://github.com/<your-user>/<your-repo>`
+Create a Blueprint from `render.yaml` in the new GitHub repository. It creates the static frontend and Node API service. After both services exist, set:
 
-### 3. Fill required env vars in Render UI
+- **`abhay-server`**
+  - `ML_ENGINE_URL`: the HTTPS URL from AWS, without a trailing slash.
+  - `ML_API_KEY`: the same secret generated on the Lightsail instance.
+  - `CORS_ORIGINS`: the exact public URL of the Render frontend.
+- **`abhay-frontend`**
+  - `VITE_API_BASE_URL`: the Render server URL followed by `/api`.
 
-- `ML_ENGINE_URL` (for `veritas-server`):
-  - set to your ML service URL after it is created, for example:
-  - `https://veritas-ml-engine.onrender.com`
-- `CORS_ORIGINS` (for `veritas-server`):
-  - set to your frontend URL, for example:
-  - `https://veritas-frontend.onrender.com`
-- `VITE_API_BASE_URL` (for `veritas-frontend`):
-  - set to backend API URL:
-  - `https://veritas-server.onrender.com/api`
+Deploy the backend first, then the frontend. The Node server's `/api/health` endpoint checks the AWS ML service too.
 
-### 4. Deploy order
+### Local development
 
-1. Deploy `veritas-ml-engine` and verify `/health`.
-2. Set `ML_ENGINE_URL` in `veritas-server`, then deploy backend.
-3. Set `VITE_API_BASE_URL` and `CORS_ORIGINS`, then deploy frontend.
-
-### 5. Verify
-
-- Backend health: `https://<server>.onrender.com/api/health`
-- ML health: `https://<ml>.onrender.com/health`
-- Frontend: `https://<frontend>.onrender.com`
+The repository also runs locally with the existing React, Node, and Python services. Follow the Installation and Training/Startup sections above; for local ML calls, leave `ML_API_KEY` unset in both the Node and Python processes.
