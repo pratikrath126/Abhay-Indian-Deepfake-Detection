@@ -214,32 +214,32 @@ Accuracy depends heavily on dataset balance, image quality, and training quality
 - **Slow training**
   - Confirm MPS is available on Mac (`torch.backends.mps.is_available()`).
 
-## Deployment: Render + AWS Lightsail
+## Deployment: Render + AWS EC2
 
-The production setup is split across two providers:
+The public deployment is split across two providers:
 
 - **Render:** React/Vite static frontend and Node/Express API gateway.
-- **AWS Lightsail (Mumbai):** Python/FastAPI inference API with the trained EfficientNet-B0 model.
+- **AWS EC2 (Mumbai, `ap-south-1`):** Python/FastAPI inference API using the trained EfficientNet-B0 model.
 
-The model weights are included in this repository so the AWS container can build without downloading a separate artifact. Dataset files remain excluded from Git.
+The model weights are included in this repository so the EC2 container can build without downloading a separate artifact. Dataset files remain excluded from Git. The ML API listens on localhost port 8000 and Nginx exposes it over HTTPS. Render authenticates requests with a generated `ML_API_KEY`.
 
-### AWS ML service
+### AWS ML service (EC2)
 
-1. Create an Ubuntu 24.04 Lightsail instance in **Asia Pacific (Mumbai), `ap-south-1`**. The recommended Linux bundle has 2 vCPUs and 4 GB RAM. AWS lists it at $24/month with public IPv4; Mumbai transfer allowance is half the listed 4 TB, or 2 TB. It is a good fit for a five-user classroom demo. [Bundle details](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-bundles.html) · [Mumbai region availability](https://docs.aws.amazon.com/lightsail/latest/userguide/understanding-regions-and-availability-zones-in-amazon-lightsail.html)
-2. In the instance networking firewall, allow inbound TCP **80** and **443**. The deployment script obtains a Let's Encrypt certificate for the instance's `nip.io` hostname and redirects HTTP to HTTPS.
-3. Paste the contents of `deploy/aws/lightsail-user-data.sh` into the instance's launch script. It installs Docker, builds the CPU-only ML container, creates an `ML_API_KEY` in `/opt/abhay/.env`, and configures Nginx and TLS.
-4. Wait for the instance initialization to finish. The public ML URL is recorded at `/opt/abhay/DEPLOYED_URL.txt`; `/health` should report `status: ok`.
-5. Copy the generated `ML_API_KEY` from `/opt/abhay/.env` into the Render server environment. Keep it private and do not commit it.
+1. In **Asia Pacific (Mumbai), `ap-south-1`**, launch an Ubuntu Server 24.04 LTS EC2 instance. Choose **`t3.medium` (2 vCPU, 4 GiB RAM)** for a small classroom demo with a little memory headroom. A `t3.small` has only 2 GiB RAM and may run short of memory when the model and multiple requests overlap. Set CPU credit mode to **Standard** to avoid surplus credit charges.
+2. Create/select an EC2 key pair if you need SSH access. In the launch wizard, create a security group with inbound TCP **80** and **443** from `0.0.0.0/0` (and `::/0` if enabling IPv6). Keep SSH (TCP 22) restricted to your current public IP. Do not open port 8000 publicly.
+3. Expand **Advanced details → User data** and paste `deploy/aws/ec2-user-data.sh` before launching. It installs Docker and Nginx, builds the ML service, generates a private API key, and requests HTTPS certificates for the instance public-IP hostname.
+4. Once the instance is running, allocate an **Elastic IP** in the same region and associate it with the instance. The bootstrap checks for the assigned IP every two minutes and updates its HTTPS hostname after association. Allow a few minutes for initialization and certificate issuance.
+5. Connect using EC2 Instance Connect or SSH. Read the URL from `/opt/abhay/DEPLOYED_URL.txt` and the key from `/opt/abhay/.env`. Keep the key private; do not commit it or paste it into chat. Verify `https://<Elastic-IP>.nip.io/health` reports `status: ok`.
 
-Lightsail instances continue to accrue charges while stopped. Delete the instance after the demo if you want to stop its charges; deleting it removes the instance data. [AWS billing details](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-frequently-asked-questions-faq-billing-and-account-management.html) · [Deleting an instance](https://docs.aws.amazon.com/lightsail/latest/userguide/delete-an-amazon-lightsail-instance.html)
+The deployment uses AWS public IPv4 addresses, which AWS currently prices at $0.005 per hour (about $3.65 per 30-day month) in addition to instance, storage, and data transfer charges. Stopping an instance does not release its Elastic IP address; disassociate and release the address when the demo is over. Check the AWS console estimate for your account's current credit eligibility and exact regional rates.
 
 ### Render services
 
-Create a Blueprint from `render.yaml` in the new GitHub repository. It creates the static frontend and Node API service. After both services exist, set:
+Create a Blueprint from `render.yaml` in this GitHub repository. It creates the static frontend and Node API service. After both services exist, set:
 
 - **`abhay-server`**
-  - `ML_ENGINE_URL`: the HTTPS URL from AWS, without a trailing slash.
-  - `ML_API_KEY`: the same secret generated on the Lightsail instance.
+  - `ML_ENGINE_URL`: the HTTPS URL recorded on EC2, without a trailing slash.
+  - `ML_API_KEY`: the value of `ML_API_KEY` from `/opt/abhay/.env`.
   - `CORS_ORIGINS`: the exact public URL of the Render frontend.
 - **`abhay-frontend`**
   - `VITE_API_BASE_URL`: the Render server URL followed by `/api`.

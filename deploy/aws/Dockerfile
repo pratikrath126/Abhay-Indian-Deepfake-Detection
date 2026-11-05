@@ -9,8 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY deploy/aws/requirements.txt ./requirements-aws.txt
 
-# Use CPU-only PyTorch wheels; this service runs inference on a small Lightsail VM.
+# Use CPU-only PyTorch wheels; this service runs inference on a small EC2 instance.
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+      --extra-index-url https://pypi.org/simple \
       torch==2.1.0+cpu torchvision==0.16.0+cpu \
     && pip install --no-cache-dir -r requirements-aws.txt
 
