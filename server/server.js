@@ -8,7 +8,7 @@ const uploadRoutes = require('./routes/upload');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const ML_ENGINE_URL = process.env.ML_ENGINE_URL || 'http://localhost:8000';
-const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000')
+const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,https://abhay-frontend-umc1.onrender.com')
   .split(',')
   .map((origin) => origin.trim());
 
