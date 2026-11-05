@@ -51,7 +51,7 @@ async def health_check():
     }
 
 @app.post("/predict")
-def predict(file: UploadFile = File(...), x_ml_api_key: str | None = Header(default=None)):
+async def predict(file: UploadFile = File(...), x_ml_api_key: str | None = Header(default=None)):
     """
     Accept image file, run deepfake detection + metadata analysis.
     Returns combined result.
